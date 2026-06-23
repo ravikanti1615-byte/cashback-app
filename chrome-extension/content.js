@@ -7,11 +7,20 @@ function getStoreSlug() {
     .replace('.net', '')
     .replace('.org', '')
     .replace('.co', '')
-    .toLowerCase();
+    .replace('.uk', '')
+    .toLowerCase()
+    .trim();
   return hostname;
 }
 
-function createBadge(portal, rate, slug) {
+function storeExists(slug) {
+  return fetch(`${API}/api/suggest/${encodeURIComponent(slug)}`)
+    .then(r => r.json())
+    .then(suggestions => suggestions.length > 0 && suggestions[0].slug.includes(slug))
+    .catch(() => false);
+}
+
+function createBadge(slug, matchSlug) {
   const existing = document.getElementById('cashback-compare-badge');
   if (existing) existing.remove();
 
@@ -37,12 +46,12 @@ function createBadge(portal, rate, slug) {
 
   badge.innerHTML = `
     <div style="font-size:11px;opacity:0.85;margin-bottom:4px;">💰 CASHBACK AVAILABLE</div>
-    <div style="font-size:16px;">${rate} at ${portal}</div>
-    <div style="font-size:11px;opacity:0.75;margin-top:4px;">Click to see all rates →</div>
+    <div style="font-size:15px;">Click to see best rates</div>
+    <div style="font-size:11px;opacity:0.75;margin-top:4px;">Compare all portals →</div>
   `;
 
   badge.addEventListener('click', () => {
-    window.open(`${API}?store=${slug}`, '_blank');
+    window.open(`${API}?store=${matchSlug}`, '_blank');
     badge.remove();
   });
 
@@ -77,22 +86,15 @@ async function checkCashback() {
   try {
     const res = await fetch(`${API}/api/suggest/${encodeURIComponent(slug)}`);
     const suggestions = await res.json();
-    const match = suggestions.find(s => s.slug === slug || s.slug.includes(slug));
-    if (!match) return;
+    if (!suggestions || suggestions.length === 0) return;
 
-    const cashbackRes = await fetch(`${API}/api/cashback/${match.slug}`);
-    if (!cashbackRes.ok) return;
-    const data = await cashbackRes.json();
+    const match = suggestions[0];
+    if (!match.slug.includes(slug) && !slug.includes(match.slug)) return;
 
-    if (data.data && data.data.length > 0) {
-      const best = data.data.sort((a, b) => {
-        const an = parseFloat(a.rate.replace(/[^0-9.]/g, '')) || 0;
-        const bn = parseFloat(b.rate.replace(/[^0-9.]/g, '')) || 0;
-        return bn - an;
-      })[0];
-      createBadge(best.portal, best.rate, match.slug);
-    }
-  } catch(e) {}
+    createBadge(slug, match.slug);
+  } catch(e) {
+    console.log('[Cashback Compare] Error:', e.message);
+  }
 }
 
 setTimeout(checkCashback, 2000);

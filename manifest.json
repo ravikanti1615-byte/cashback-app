@@ -1,7 +1,7 @@
 {
-  "name": "Cashback Compare",
-  "short_name": "Cashback",
-  "description": "Compare cashback rates across all major portals",
+  "name": "Raghav Cashback Scrape",
+"short_name": "RCS",
+"description": "Raghav's cashback rate comparison tool",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f9fafb",
