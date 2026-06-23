@@ -7,6 +7,7 @@ const { scrapeAll } = require('./scraper');
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(require('express').static('.'));
 
 function getData() {
   if (fs.existsSync('data.json')) {
