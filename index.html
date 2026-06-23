@@ -98,29 +98,24 @@
   async function fetchSuggestions(query) {
     try {
       const res = await fetch(`${API}/api/suggest/${encodeURIComponent(query)}`);
-      const suggestions = await res.json();
-      showSuggestions(suggestions);
-    } catch(e) {}
-  }
-
-  function showSuggestions(list) {
-    clearSuggestions();
-    if (!list.length) return;
-    const div = document.createElement('div');
-    div.id = 'suggestions';
-    div.className = 'suggestions';
-    list.forEach(s => {
-      const item = document.createElement('div');
-      item.className = 'suggestion-item';
-      item.innerHTML = `<span class="suggestion-icon">🔍</span> ${s.name}`;
-      item.addEventListener('mousedown', () => {
-        input.value = s.name;
-        clearSuggestions();
-        doSearch(s.slug);
+      const list = await res.json();
+      if (!list.length) return;
+      const div = document.createElement('div');
+      div.id = 'suggestions';
+      div.className = 'suggestions';
+      list.forEach(s => {
+        const item = document.createElement('div');
+        item.className = 'suggestion-item';
+        item.innerHTML = `<span class="suggestion-icon">🔍</span> ${s.name}`;
+        item.addEventListener('mousedown', () => {
+          input.value = s.name;
+          clearSuggestions();
+          doSearch(s.slug);
+        });
+        div.appendChild(item);
       });
-      div.appendChild(item);
-    });
-    document.querySelector('header').appendChild(div);
+      document.querySelector('header').appendChild(div);
+    } catch(e) {}
   }
 
   document.addEventListener('click', e => {
@@ -134,23 +129,23 @@
   }
 
   function parseRate(rate) {
-    const num = parseFloat(rate.replace(/[^0-9.]/g, ''));
-    return isNaN(num) ? 0 : num;
+    return parseFloat(rate.replace(/[^0-9.]/g, '')) || 0;
   }
 
   async function doSearch(slugOverride) {
     const raw = input.value.trim();
-    if (!raw) return;
+    if (!raw && !slugOverride) return;
     const slug = slugOverride || raw.toLowerCase().replace(/\s+/g, '-');
+    clearSuggestions();
     const main = document.getElementById('main');
-    main.innerHTML = `<div class="state-box"><div class="spinner"></div><p>Finding best rates for <strong>${raw}</strong>...</p></div>`;
+    main.innerHTML = `<div class="state-box"><div class="spinner"></div><p>Finding best rates for <strong>${raw || slug}</strong>...</p></div>`;
     try {
       const res = await fetch(`${API}/api/cashback/${slug}`);
       if (!res.ok) throw new Error('Not found');
       const store = await res.json();
-      renderResults(store, slug, raw, 'All');
+      renderResults(store, slug, raw || slug, 'All');
     } catch(e) {
-      main.innerHTML = `<div class="state-box"><div class="icon">🔍</div><p>No results found for "<strong>${raw}</strong>".<br><br>Try selecting from the suggestions.</p></div>`;
+      main.innerHTML = `<div class="state-box"><div class="icon">🔍</div><p>No results found for "<strong>${raw || slug}</strong>".<br><br>Try selecting from the suggestions.</p></div>`;
     }
   }
 
@@ -206,6 +201,13 @@
 
   function changeFilter(f) {
     if (window._currentStore) renderResults(window._currentStore, window._currentSlug, window._currentDisplay, f);
+  }
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const storeParam = urlParams.get('store');
+  if (storeParam) {
+    input.value = storeParam;
+    doSearch(storeParam);
   }
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
