@@ -10,6 +10,8 @@ app.use(cors());
 app.use(express.json());
 app.use(require('express').static('.', { etag: false, maxAge: 0 }));
 
+const STORES = require('./stores.json');
+
 function getData() {
   if (fs.existsSync('data.json')) {
     return JSON.parse(fs.readFileSync('data.json', 'utf8'));
@@ -26,30 +28,15 @@ app.get('/', (req, res) => {
 });
 
 app.get('/api/stores', (req, res) => {
-  const data = getData();
-  res.json(Object.keys(data));
+  res.json(STORES.map(s => s.slug));
 });
 
-app.get('/api/suggest/:query', async (req, res) => {
+app.get('/api/suggest/:query', (req, res) => {
   const query = req.params.query.toLowerCase();
-  try {
-    const url = `http://api.scraperapi.com?api_key=091d7d9afecd58eef448bdfc8c74bea4&url=${encodeURIComponent('https://www.cashbackmonitor.com/search-store/?q=' + query)}`;
-    const { data } = await axios.get(url, { timeout: 30000 });
-    const $ = cheerio.load(data);
-    const suggestions = [];
-    $('a[href*="/cashback-store/"]').each((i, el) => {
-      const href = $(el).attr('href');
-      const name = $(el).text().trim();
-      const slug = href?.match(/\/cashback-store\/([^/]+)\//)?.[1];
-      if (slug && name && suggestions.length < 8) {
-        suggestions.push({ slug, name });
-      }
-    });
-    res.json(suggestions);
-  } catch(e) {
-    console.error('Suggest failed:', e.message);
-    res.json([]);
-  }
+  const matches = STORES
+    .filter(s => s.name.toLowerCase().includes(query) || s.slug.includes(query))
+    .slice(0, 8);
+  res.json(matches);
 });
 
 app.get('/api/cashback/:store', async (req, res) => {
@@ -94,5 +81,6 @@ app.get('/api/search/:query', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Loaded ${STORES.length} stores for suggestions`);
   console.log('Live scraping mode — every search fetches fresh data from CashbackMonitor');
 });
