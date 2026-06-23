@@ -30,17 +30,19 @@
     .results-header h2 { font-size: 17px; font-weight: 600; }
     .results-header .count { font-size: 13px; color: var(--muted); background: var(--border); padding: 3px 10px; border-radius: 20px; }
     .updated { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
-    .portal-card { background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); padding: 14px 16px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .portal-card { background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); padding: 14px 16px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; transition: transform 0.1s, box-shadow 0.1s; }
+    .portal-card:active { transform: scale(0.98); }
     .portal-card.best { border-color: var(--green); background: #f0fdf4; }
     .portal-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
     .rank { font-size: 13px; font-weight: 700; color: var(--muted); min-width: 24px; }
     .rank.gold { color: #d97706; }
     .portal-info { min-width: 0; }
-    .portal-name { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .portal-name { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
     .portal-type { font-size: 12px; color: var(--muted); margin-top: 2px; }
     .rate-badge { font-size: 16px; font-weight: 700; color: var(--green-dark); background: var(--green-light); padding: 6px 12px; border-radius: 8px; white-space: nowrap; }
     .best .rate-badge { background: var(--green); color: white; }
     .best-label { font-size: 11px; font-weight: 600; color: var(--green); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+    .go-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
     .filter-bar { display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto; padding-bottom: 4px; }
     .filter-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: white; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; color: var(--text); }
     .filter-btn.active { background: var(--green); border-color: var(--green); color: white; }
@@ -50,6 +52,7 @@
     .install-banner p { font-size: 13px; color: var(--green-dark); line-height: 1.4; }
     .install-banner button { padding: 7px 14px; background: var(--green); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
     .close-banner { background: none !important; color: var(--muted) !important; padding: 4px !important; font-size: 18px !important; }
+    a { text-decoration: none; }
   </style>
 </head>
 <body>
@@ -114,64 +117,73 @@
   }
 
   async function doSearch() {
-    const query = document.getElementById('searchInput').value.trim().toLowerCase().replace(/\s+/g, '-');
-    if (!query) return;
+    const raw = document.getElementById('searchInput').value.trim();
+    if (!raw) return;
+    const query = raw.toLowerCase().replace(/\s+/g, '-');
     const main = document.getElementById('main');
-    main.innerHTML = `<div class="state-box"><div class="spinner"></div><p>Finding best rates for <strong>${query}</strong>...</p></div>`;
+    main.innerHTML = `<div class="state-box"><div class="spinner"></div><p>Finding best rates for <strong>${raw}</strong>...</p></div>`;
     try {
       const res = await fetch(`${API}/api/cashback/${query}`);
       if (!res.ok) throw new Error('Not found');
       const store = await res.json();
-      renderResults(store, query);
+      renderResults(store, query, raw, 'All');
     } catch(e) {
-      main.innerHTML = `<div class="state-box"><div class="icon">🔍</div><p>No results found for "<strong>${query}</strong>".<br><br>Try a different spelling.</p></div>`;
+      main.innerHTML = `<div class="state-box"><div class="icon">🔍</div><p>No results found for "<strong>${raw}</strong>".<br><br>Try a different spelling.</p></div>`;
     }
   }
 
-  function renderResults(store, query, filter = 'All') {
+  function renderResults(store, query, displayName, filter) {
     const main = document.getElementById('main');
     const updatedAt = new Date(store.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     let data = [...store.data];
     if (filter !== 'All') data = data.filter(d => getType(d.rate) === filter);
     data.sort((a, b) => parseRate(b.rate) - parseRate(a.rate));
     const filters = ['All', 'Cashback', 'Miles', 'Points'];
+
     let html = `
       <div class="results-header">
-        <h2>${store.name || query}</h2>
+        <h2>${store.name || displayName}</h2>
         <span class="count">${data.length} portals</span>
       </div>
-      <div class="updated">Updated ${updatedAt}</div>
+      <div class="updated">Updated ${updatedAt} · tap a portal to activate cashback</div>
       <div class="filter-bar">
         ${filters.map(f => `<button class="filter-btn ${f===filter?'active':''}" onclick="changeFilter('${f}')">${f}</button>`).join('')}
       </div>
     `;
+
     if (data.length === 0) {
       html += `<div class="state-box"><div class="icon">😔</div><p>No ${filter} rates found.</p></div>`;
     } else {
       data.forEach((item, i) => {
         const isBest = i === 0;
+        const portalEncoded = encodeURIComponent(item.portal);
+        const link = `https://www.cashbackmonitor.com/go-to/${portalEncoded}/${query}/`;
         html += `
-          <div class="portal-card ${isBest ? 'best' : ''}">
-            <div class="portal-left">
-              <div class="rank ${isBest ? 'gold' : ''}">${isBest ? '★' : '#'+(i+1)}</div>
-              <div class="portal-info">
-                <div class="portal-name">${item.portal}</div>
-                <div class="portal-type">${getType(item.rate)}</div>
-                ${isBest ? '<div class="best-label">Best rate</div>' : ''}
+          <a href="${link}" target="_blank" rel="noopener">
+            <div class="portal-card ${isBest ? 'best' : ''}">
+              <div class="portal-left">
+                <div class="rank ${isBest ? 'gold' : ''}">${isBest ? '★' : '#'+(i+1)}</div>
+                <div class="portal-info">
+                  <div class="portal-name">${item.portal}</div>
+                  <div class="portal-type">${getType(item.rate)}</div>
+                  ${isBest ? '<div class="best-label">Best rate</div>' : '<div class="go-label">Tap to activate →</div>'}
+                </div>
               </div>
+              <div class="rate-badge">${item.rate}</div>
             </div>
-            <div class="rate-badge">${item.rate}</div>
-          </div>
+          </a>
         `;
       });
     }
+
     main.innerHTML = html;
     window._currentStore = store;
     window._currentQuery = query;
+    window._currentDisplay = displayName;
   }
 
   function changeFilter(f) {
-    if (window._currentStore) renderResults(window._currentStore, window._currentQuery, f);
+    if (window._currentStore) renderResults(window._currentStore, window._currentQuery, window._currentDisplay, f);
   }
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
