@@ -1,0 +1,148 @@
+{
+  "nike": {
+    "name": "Nike",
+    "data": [
+      {
+        "portal": "Fluz",
+        "rate": "Up to 6%"
+      },
+      {
+        "portal": "Rakuten",
+        "rate": "10%"
+      },
+      {
+        "portal": "Top Cashback",
+        "rate": "10%"
+      },
+      {
+        "portal": "BeFrugal",
+        "rate": "10% (12%*)"
+      },
+      {
+        "portal": "Mr. Rebates",
+        "rate": "10%"
+      },
+      {
+        "portal": "Active Junky",
+        "rate": "10%"
+      },
+      {
+        "portal": "ShopBack",
+        "rate": "9%"
+      },
+      {
+        "portal": "Price.com",
+        "rate": "9% ($15**)"
+      },
+      {
+        "portal": "Hoopla Doopla",
+        "rate": "8.5%"
+      },
+      {
+        "portal": "RebatesMe",
+        "rate": "6%"
+      },
+      {
+        "portal": "GoCashBack",
+        "rate": "6%"
+      },
+      {
+        "portal": "InboxDollars",
+        "rate": "4%"
+      },
+      {
+        "portal": "RetailMeNot",
+        "rate": "4% ($50**)"
+      },
+      {
+        "portal": "USAA MemberShop",
+        "rate": "4%"
+      },
+      {
+        "portal": "Goodshop",
+        "rate": "3%"
+      },
+      {
+        "portal": "Kudos",
+        "rate": "1%"
+      },
+      {
+        "portal": "ExtraBux",
+        "rate": "0.8% (3%*)"
+      },
+      {
+        "portal": "55Haitao",
+        "rate": "0.5%"
+      },
+      {
+        "portal": "CouponFollow",
+        "rate": "Up to 1%"
+      },
+      {
+        "portal": "Rove Miles",
+        "rate": "6.5 mi./$"
+      },
+      {
+        "portal": "United Mileage Plus (ua cc)",
+        "rate": "3 (2) mi./$"
+      },
+      {
+        "portal": "American AAdvantage",
+        "rate": "3 (2) mi./$"
+      },
+      {
+        "portal": "Southwest Rapid Rewards",
+        "rate": "3 (2) pt./$"
+      },
+      {
+        "portal": "Alaska Mileage Plan",
+        "rate": "3 (2) mi./$"
+      },
+      {
+        "portal": "Delta Sky Miles",
+        "rate": "2.5 (1.5) mi./$"
+      },
+      {
+        "portal": "Flying Blue Shopping (US)",
+        "rate": "2.5 mi./$"
+      },
+      {
+        "portal": "United Mileage Plus (no ua cc)",
+        "rate": "2 (1) mi./$"
+      },
+      {
+        "portal": "Chase UR (Freedom)",
+        "rate": "4 (2) pt./$"
+      },
+      {
+        "portal": "BarclayCard RewardsBoost",
+        "rate": "4 (2) pt./$"
+      },
+      {
+        "portal": "Chase UR (Ink Preferred)",
+        "rate": "3 (2) pt./$"
+      },
+      {
+        "portal": "Chase UR (Sapphire)",
+        "rate": "3 (2) pt./$"
+      },
+      {
+        "portal": "Rakuten (Amex MR)",
+        "rate": "10 pt./$"
+      },
+      {
+        "portal": "UPromise",
+        "rate": "4%"
+      },
+      {
+        "portal": "Swagbucks",
+        "rate": "4% (4 SB/$)"
+      },
+      {
+        "portal": "MyPoints",
+        "rate": "2.8% (4 pt./$)"
+      }
+    ],
+    "updatedAt": "2026-06-23T05:36:07.743Z"
+  }
+}
