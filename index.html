@@ -15,13 +15,18 @@
       --muted: #6b7280; --border: #e5e7eb; --radius: 12px;
     }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-    header { background: var(--green); padding: 16px 20px 12px; position: sticky; top: 0; z-index: 100; }
+    header { background: var(--green); padding: 16px 20px 12px; position: relative; z-index: 100; }
     header h1 { color: white; font-size: 20px; font-weight: 700; margin-bottom: 10px; }
     header h1 span { font-weight: 300; opacity: 0.85; }
     .search-bar { display: flex; gap: 8px; }
     .search-bar input { flex: 1; padding: 10px 14px; border-radius: 10px; border: none; font-size: 15px; outline: none; background: rgba(255,255,255,0.95); color: var(--text); }
     .search-bar input::placeholder { color: #9ca3af; }
     .search-bar button { padding: 10px 16px; background: white; color: var(--green); border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .suggestions { position: absolute; left: 20px; right: 20px; background: white; border-radius: 0 0 12px 12px; overflow: hidden; z-index: 200; border: 1px solid #e5e7eb; border-top: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .suggestion-item { padding: 12px 16px; font-size: 15px; cursor: pointer; color: var(--text); border-bottom: 1px solid #f3f4f6; display: flex; align-items: center; gap: 10px; }
+    .suggestion-item:hover { background: #f9fafb; }
+    .suggestion-item:last-child { border-bottom: none; }
+    .suggestion-icon { color: var(--muted); font-size: 13px; }
     .main { padding: 16px; }
     .state-box { text-align: center; padding: 60px 20px; color: var(--muted); }
     .state-box .icon { font-size: 48px; margin-bottom: 12px; }
@@ -30,7 +35,7 @@
     .results-header h2 { font-size: 17px; font-weight: 600; }
     .results-header .count { font-size: 13px; color: var(--muted); background: var(--border); padding: 3px 10px; border-radius: 20px; }
     .updated { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
-    .portal-card { background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); padding: 14px 16px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; transition: transform 0.1s, box-shadow 0.1s; }
+    .portal-card { background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); padding: 14px 16px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; transition: transform 0.1s; }
     .portal-card:active { transform: scale(0.98); }
     .portal-card.best { border-color: var(--green); background: #f0fdf4; }
     .portal-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
@@ -48,10 +53,6 @@
     .filter-btn.active { background: var(--green); border-color: var(--green); color: white; }
     .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--green); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .install-banner { background: var(--green-light); border: 1px solid #bbf7d0; border-radius: var(--radius); padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .install-banner p { font-size: 13px; color: var(--green-dark); line-height: 1.4; }
-    .install-banner button { padding: 7px 14px; background: var(--green); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
-    .close-banner { background: none !important; color: var(--muted) !important; padding: 4px !important; font-size: 18px !important; }
     a { text-decoration: none; }
   </style>
 </head>
@@ -63,46 +64,67 @@
     <button onclick="doSearch()">Search</button>
   </div>
 </header>
+
 <div class="main" id="main">
-  <div class="state-box" id="emptyState">
+  <div class="state-box">
     <div class="icon">💰</div>
     <p>Search any store to compare cashback rates across all major portals.</p>
   </div>
 </div>
+
 <script>
   const API = 'https://cashback-app-production-dc7f.up.railway.app';
-  let deferredPrompt = null;
+  let suggestTimer = null;
 
-  window.addEventListener('beforeinstallprompt', e => {
-    e.preventDefault();
-    deferredPrompt = e;
-    showInstallBanner();
+  const input = document.getElementById('searchInput');
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { clearSuggestions(); doSearch(); }
+    if (e.key === 'Escape') clearSuggestions();
   });
 
-  function showInstallBanner() {
-    const banner = document.createElement('div');
-    banner.className = 'install-banner';
-    banner.id = 'installBanner';
-    banner.innerHTML = `
-      <p>Install Cashback Compare on your phone!</p>
-      <button onclick="installApp()">Install</button>
-      <button class="close-banner" onclick="document.getElementById('installBanner').remove()">×</button>
-    `;
-    document.getElementById('main').prepend(banner);
+  input.addEventListener('input', e => {
+    const val = e.target.value.trim();
+    clearTimeout(suggestTimer);
+    if (val.length < 2) { clearSuggestions(); return; }
+    suggestTimer = setTimeout(() => fetchSuggestions(val), 400);
+  });
+
+  function clearSuggestions() {
+    const el = document.getElementById('suggestions');
+    if (el) el.remove();
   }
 
-  async function installApp() {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      await deferredPrompt.userChoice;
-      deferredPrompt = null;
-      const b = document.getElementById('installBanner');
-      if (b) b.remove();
-    }
+  async function fetchSuggestions(query) {
+    try {
+      const res = await fetch(`${API}/api/suggest/${encodeURIComponent(query)}`);
+      const suggestions = await res.json();
+      showSuggestions(suggestions);
+    } catch(e) {}
   }
 
-  document.getElementById('searchInput').addEventListener('keydown', e => {
-    if (e.key === 'Enter') doSearch();
+  function showSuggestions(list) {
+    clearSuggestions();
+    if (!list.length) return;
+    const div = document.createElement('div');
+    div.id = 'suggestions';
+    div.className = 'suggestions';
+    list.forEach(s => {
+      const item = document.createElement('div');
+      item.className = 'suggestion-item';
+      item.innerHTML = `<span class="suggestion-icon">🔍</span> ${s.name}`;
+      item.addEventListener('mousedown', () => {
+        input.value = s.name;
+        clearSuggestions();
+        doSearch(s.slug);
+      });
+      div.appendChild(item);
+    });
+    document.querySelector('header').appendChild(div);
+  }
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('header')) clearSuggestions();
   });
 
   function getType(rate) {
@@ -116,23 +138,23 @@
     return isNaN(num) ? 0 : num;
   }
 
-  async function doSearch() {
-    const raw = document.getElementById('searchInput').value.trim();
+  async function doSearch(slugOverride) {
+    const raw = input.value.trim();
     if (!raw) return;
-    const query = raw.toLowerCase().replace(/\s+/g, '-');
+    const slug = slugOverride || raw.toLowerCase().replace(/\s+/g, '-');
     const main = document.getElementById('main');
     main.innerHTML = `<div class="state-box"><div class="spinner"></div><p>Finding best rates for <strong>${raw}</strong>...</p></div>`;
     try {
-      const res = await fetch(`${API}/api/cashback/${query}`);
+      const res = await fetch(`${API}/api/cashback/${slug}`);
       if (!res.ok) throw new Error('Not found');
       const store = await res.json();
-      renderResults(store, query, raw, 'All');
+      renderResults(store, slug, raw, 'All');
     } catch(e) {
-      main.innerHTML = `<div class="state-box"><div class="icon">🔍</div><p>No results found for "<strong>${raw}</strong>".<br><br>Try a different spelling.</p></div>`;
+      main.innerHTML = `<div class="state-box"><div class="icon">🔍</div><p>No results found for "<strong>${raw}</strong>".<br><br>Try selecting from the suggestions.</p></div>`;
     }
   }
 
-  function renderResults(store, query, displayName, filter) {
+  function renderResults(store, slug, displayName, filter) {
     const main = document.getElementById('main');
     const updatedAt = new Date(store.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     let data = [...store.data];
@@ -157,7 +179,7 @@
       data.forEach((item, i) => {
         const isBest = i === 0;
         const portalEncoded = encodeURIComponent(item.portal);
-        const link = `https://www.cashbackmonitor.com/go-to/${portalEncoded}/${query}/`;
+        const link = `https://www.cashbackmonitor.com/go-to/${portalEncoded}/${slug}/`;
         html += `
           <a href="${link}" target="_blank" rel="noopener">
             <div class="portal-card ${isBest ? 'best' : ''}">
@@ -178,12 +200,12 @@
 
     main.innerHTML = html;
     window._currentStore = store;
-    window._currentQuery = query;
+    window._currentSlug = slug;
     window._currentDisplay = displayName;
   }
 
   function changeFilter(f) {
-    if (window._currentStore) renderResults(window._currentStore, window._currentQuery, window._currentDisplay, f);
+    if (window._currentStore) renderResults(window._currentStore, window._currentSlug, window._currentDisplay, f);
   }
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
