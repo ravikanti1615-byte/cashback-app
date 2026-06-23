@@ -1,6 +1,5 @@
 const express = require('express');
 const cors    = require('cors');
-const cron    = require('node-cron');
 const fs      = require('fs');
 const { scrapeStore } = require('./scraper');
 
@@ -20,12 +19,6 @@ function saveData(data) {
   fs.writeFileSync('data.json', JSON.stringify(data, null, 2));
 }
 
-function isStale(store) {
-  if (!store || !store.updatedAt) return true;
-  const age = Date.now() - new Date(store.updatedAt).getTime();
-  return age > 24 * 60 * 60 * 1000;
-}
-
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html');
 });
@@ -36,37 +29,37 @@ app.get('/api/stores', (req, res) => {
 });
 
 app.get('/api/cashback/:store', async (req, res) => {
-  const slug  = req.params.store.toLowerCase().replace(/\s+/g, '-');
-  const data  = getData();
+  const slug = req.params.store.toLowerCase().replace(/\s+/g, '-');
 
-  if (data[slug] && !isStale(data[slug])) {
-    console.log(`Cache hit: ${slug}`);
-    return res.json(data[slug]);
-  }
-
-  console.log(`Cache miss: ${slug} — scraping now...`);
+  console.log(`Fetching live data for: ${slug}`);
 
   try {
     const results = await scrapeStore(slug);
 
     if (results.length > 0) {
-      data[slug] = {
+      const storeData = {
         name: slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
         data: results,
         updatedAt: new Date().toISOString()
       };
+
+      const data = getData();
+      data[slug] = storeData;
       saveData(data);
-      console.log(`Scraped and cached: ${slug} (${results.length} portals)`);
-      return res.json(data[slug]);
+
+      console.log(`Done: ${slug} (${results.length} portals)`);
+      return res.json(storeData);
+
     } else {
       return res.status(404).json({ error: 'Store not found or no cashback available' });
     }
 
   } catch (err) {
-    console.error(`Scrape failed for ${slug}:`, err.message);
+    console.error(`Failed for ${slug}:`, err.message);
 
+    const data = getData();
     if (data[slug]) {
-      console.log(`Returning stale data for ${slug}`);
+      console.log(`Returning last known data for ${slug}`);
       return res.json(data[slug]);
     }
 
@@ -75,39 +68,16 @@ app.get('/api/cashback/:store', async (req, res) => {
 });
 
 app.get('/api/search/:query', (req, res) => {
-  const data    = getData();
-  const query   = req.params.query.toLowerCase();
+  const data  = getData();
+  const query = req.params.query.toLowerCase();
   const matches = Object.keys(data).filter(s => s.includes(query));
   const results = {};
   matches.forEach(s => results[s] = data[s]);
   res.json(results);
 });
 
-cron.schedule('0 3 * * *', () => {
-  console.log('Refreshing cached stores...');
-  const data = getData();
-  const slugs = Object.keys(data);
-  (async () => {
-    for (const slug of slugs) {
-      try {
-        const results = await scrapeStore(slug);
-        if (results.length > 0) {
-          data[slug].data = results;
-          data[slug].updatedAt = new Date().toISOString();
-          saveData(data);
-          console.log(`Refreshed: ${slug}`);
-        }
-        await new Promise(r => setTimeout(r, 3000));
-      } catch(e) {
-        console.error(`Refresh failed for ${slug}:`, e.message);
-      }
-    }
-    console.log('Daily refresh complete!');
-  })();
-});
-
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log('On-demand scraping enabled — stores are scraped on first search and cached for 24 hours');
+  console.log('Live scraping mode — every search fetches fresh data from CashbackMonitor');
 });
